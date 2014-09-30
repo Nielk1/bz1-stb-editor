@@ -61,7 +61,7 @@ namespace BZSpriteEditor
             UpdateGroupsEvent(this);
         }
 
-        private static Dictionary<string, Bitmap> ImageMemo;
+        private static Dictionary<string, MapFile> ImageMemo;
 
         public override string ToString()
         {
@@ -76,17 +76,17 @@ namespace BZSpriteEditor
 
         public static void EnableMemo()
         {
-            if (ImageMemo == null) ImageMemo = new Dictionary<string, Bitmap>();
+            if (ImageMemo == null) ImageMemo = new Dictionary<string, MapFile>();
         }
 
         public static void ClearImageMemo()
         {
             if (ImageMemo != null)
             {
-                ImageMemo.Values.AsEnumerable().ToList().ForEach(dr =>
-                {
-                    dr.Dispose();
-                });
+                //ImageMemo.Values.AsEnumerable().ToList().ForEach(dr =>
+                //{
+                //    dr.Dispose();
+                //});
 
                 ImageMemo.Clear();
             }
@@ -167,7 +167,6 @@ namespace BZSpriteEditor
             set
             {
                 category = value;
-                //UpdateImageFromSettings();
                 OnUpdateGroupsEvent();
             }
         }
@@ -263,16 +262,11 @@ namespace BZSpriteEditor
             {
                 Bitmap bmp = new Bitmap(width, height);
 
-                string filename = Texture + ".png";
-                if (!File.Exists(filename)) filename = Texture + ".bmp";
-                if (!File.Exists(filename)) filename = Texture + ".tga";
-                if (!File.Exists(filename)) filename = Texture + ".jpg";
-                if (!File.Exists(filename)) filename = Texture + ".jpeg";
-                if (!File.Exists(filename)) filename = Texture + ".gif";
+                string filename = Texture + ".map";
 
                 if (File.Exists(filename))
                 {
-                    Bitmap source;
+                    MapFile source = null;
 
                     if (ImageMemo != null && ImageMemo.ContainsKey(filename))
                     {
@@ -280,60 +274,24 @@ namespace BZSpriteEditor
                     }
                     else
                     {
-                        if (filename.ToLowerInvariant().EndsWith(".tga"))
-                        {
-                            source = Paloma.TargaImage.LoadTargaImage(filename);
-                        }
-                        else
-                        {
-                            source = new Bitmap(Image.FromFile(filename));
-                        }
+                        source = MapFile.FromFile(filename);
 
-                        if (ImageMemo != null)
+                        if (ImageMemo != null && source != null)
                         {
                             ImageMemo[filename] = source;
                         }
                     }
 
+                    int fileWidth = source.Width;
+                    int fileHeight =source.Height;
+
                     for (int x = 0; x < width; x++)
                     {
                         for (int y = 0; y < height; y++)
                         {
-                            if ((x + u < source.Width) && (y + v < source.Height))
+                            if ((x + u < fileWidth) && (y + v < fileHeight))
                             {
                                 Color baseColor = source.GetPixel(x + u, y + v);
-                                switch (ColorFlag)
-                                {
-                                    case Colorization.White:
-                                        break;
-                                    case Colorization.Tan:
-                                        baseColor = mulColor(baseColor, COLOR_Tan);
-                                        break;
-                                    case Colorization.Brown:
-                                        baseColor = mulColor(baseColor, COLOR_Brown);
-                                        break;
-                                    case Colorization.Black:
-                                        baseColor = mulColor(baseColor, COLOR_Black);
-                                        break;
-                                    case Colorization.Green:
-                                        baseColor = mulColor(baseColor, COLOR_Green);
-                                        break;
-                                    case Colorization.Yellow:
-                                        baseColor = mulColor(baseColor, COLOR_Yellow);
-                                        break;
-                                    case Colorization.Red:
-                                        baseColor = mulColor(baseColor, COLOR_Red);
-                                        break;
-                                    case Colorization.Blue:
-                                        baseColor = mulColor(baseColor, COLOR_Blue);
-                                        break;
-                                    case Colorization.Cyan:
-                                        baseColor = mulColor(baseColor, COLOR_Cyan);
-                                        break;
-                                    case Colorization.Grey:
-                                        baseColor = mulColor(baseColor, COLOR_Grey);
-                                        break;
-                                }
                                 bmp.SetPixel(x, y, baseColor);
                             }
                         }
@@ -343,9 +301,6 @@ namespace BZSpriteEditor
 
                     Bitmap centeredBmp = new Bitmap(64, 64);
                     Graphics g = Graphics.FromImage(centeredBmp);
-                    //g.DrawImageUnscaled(bmp, 256/2 - width / 2, 128/2 - height / 2);
-
-
 
 
                     // Figure out the ratio

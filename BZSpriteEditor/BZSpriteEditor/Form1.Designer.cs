@@ -45,6 +45,8 @@ namespace BZSpriteEditor
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toggleGroupsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.newSpriteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.deleteSpriteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
@@ -55,11 +57,9 @@ namespace BZSpriteEditor
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.listBox1 = new System.Windows.Forms.ListBox();
             this.toolStrip1 = new System.Windows.Forms.ToolStrip();
-            this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
-            this.newSpriteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.deleteSpriteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripButtonUp = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonDown = new System.Windows.Forms.ToolStripButton();
+            this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.listView1 = new BZSpriteEditor.Controls.SpriteListView();
             this.pictureBox1 = new PictureBoxWithInterpolationMode();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -198,6 +198,25 @@ namespace BZSpriteEditor
             this.toggleGroupsToolStripMenuItem.Text = "&Groups Off";
             this.toggleGroupsToolStripMenuItem.Click += new System.EventHandler(this.toggleGroupsToolStripMenuItem_Click);
             // 
+            // newSpriteToolStripMenuItem
+            // 
+            this.newSpriteToolStripMenuItem.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.newSpriteToolStripMenuItem.Image = global::BZSpriteEditor.Properties.Resources.add;
+            this.newSpriteToolStripMenuItem.Name = "newSpriteToolStripMenuItem";
+            this.newSpriteToolStripMenuItem.Size = new System.Drawing.Size(28, 20);
+            this.newSpriteToolStripMenuItem.Text = "&New Sprite";
+            this.newSpriteToolStripMenuItem.Click += new System.EventHandler(this.newSpriteToolStripMenuItem_Click);
+            // 
+            // deleteSpriteToolStripMenuItem
+            // 
+            this.deleteSpriteToolStripMenuItem.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.deleteSpriteToolStripMenuItem.Enabled = false;
+            this.deleteSpriteToolStripMenuItem.Image = global::BZSpriteEditor.Properties.Resources.delete;
+            this.deleteSpriteToolStripMenuItem.Name = "deleteSpriteToolStripMenuItem";
+            this.deleteSpriteToolStripMenuItem.Size = new System.Drawing.Size(28, 20);
+            this.deleteSpriteToolStripMenuItem.Text = "&Delete Sprite";
+            this.deleteSpriteToolStripMenuItem.Click += new System.EventHandler(this.deleteSpriteToolStripMenuItem_Click);
+            // 
             // aboutToolStripMenuItem
             // 
             this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
@@ -308,30 +327,6 @@ namespace BZSpriteEditor
             this.toolStrip1.TabIndex = 1;
             this.toolStrip1.Text = "toolStrip1";
             // 
-            // saveFileDialog1
-            // 
-            this.saveFileDialog1.DefaultExt = "stb";
-            this.saveFileDialog1.Filter = "Sprite Table Binary|*.stb";
-            // 
-            // newSpriteToolStripMenuItem
-            // 
-            this.newSpriteToolStripMenuItem.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.newSpriteToolStripMenuItem.Image = global::BZSpriteEditor.Properties.Resources.add;
-            this.newSpriteToolStripMenuItem.Name = "newSpriteToolStripMenuItem";
-            this.newSpriteToolStripMenuItem.Size = new System.Drawing.Size(28, 20);
-            this.newSpriteToolStripMenuItem.Text = "&New Sprite";
-            this.newSpriteToolStripMenuItem.Click += new System.EventHandler(this.newSpriteToolStripMenuItem_Click);
-            // 
-            // deleteSpriteToolStripMenuItem
-            // 
-            this.deleteSpriteToolStripMenuItem.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.deleteSpriteToolStripMenuItem.Enabled = false;
-            this.deleteSpriteToolStripMenuItem.Image = global::BZSpriteEditor.Properties.Resources.delete;
-            this.deleteSpriteToolStripMenuItem.Name = "deleteSpriteToolStripMenuItem";
-            this.deleteSpriteToolStripMenuItem.Size = new System.Drawing.Size(28, 20);
-            this.deleteSpriteToolStripMenuItem.Text = "&Delete Sprite";
-            this.deleteSpriteToolStripMenuItem.Click += new System.EventHandler(this.deleteSpriteToolStripMenuItem_Click);
-            // 
             // toolStripButtonUp
             // 
             this.toolStripButtonUp.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
@@ -354,6 +349,11 @@ namespace BZSpriteEditor
             this.toolStripButtonDown.Text = "Down";
             this.toolStripButtonDown.Click += new System.EventHandler(this.toolStripButtonDown_Click);
             // 
+            // saveFileDialog1
+            // 
+            this.saveFileDialog1.DefaultExt = "stb";
+            this.saveFileDialog1.Filter = "Sprite Table Binary|*.stb";
+            // 
             // listView1
             // 
             this.listView1.BackColor = System.Drawing.Color.Black;
@@ -371,6 +371,7 @@ namespace BZSpriteEditor
             // 
             // pictureBox1
             // 
+            this.pictureBox1.BackgroundImage = global::BZSpriteEditor.Properties.Resources.bg;
             this.pictureBox1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pictureBox1.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
             this.pictureBox1.Location = new System.Drawing.Point(0, 0);

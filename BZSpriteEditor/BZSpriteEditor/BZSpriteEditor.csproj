@@ -55,6 +55,7 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
+    <Compile Include="MapFile.cs" />
     <Compile Include="PictureBoxWithInterpolationMode.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -99,6 +100,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\arrow_down.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Resources\bg.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
