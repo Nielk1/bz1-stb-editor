@@ -46,6 +46,7 @@ namespace BZSpriteEditor
 
         public int Width { get { return (int)width; } }
         public int Height { get { return (int)height; } }
+        public bool IsPalletized { get { return type == MapType.P8; } }
 
         public static MapFile FromFile(string filename)
         {
@@ -123,6 +124,26 @@ namespace BZSpriteEditor
                         (int)pixel[0]);
             }
             return Color.Black;
+        }
+
+        public Color GetPixel(int x, int y, Color[] pallet)
+        {
+            if (type != MapType.P8) throw new NotSupportedException("MAP type does not support pallet");
+
+            byte pixel = raw[(x + y * width) * bpp];
+
+            Color outColor;
+            if (pallet.Length >= 256) { outColor = pallet[(int)pixel]; }
+            else if (pallet.Length >= 128) { outColor = pallet[(int)pixel >> 1]; }
+            else if (pallet.Length >= 64) { outColor = pallet[(int)pixel >> 2]; }
+            else if (pallet.Length >= 32) { outColor = pallet[(int)pixel >> 3]; }
+            else if (pallet.Length >= 16) { outColor = pallet[(int)pixel >> 4]; }
+            else if (pallet.Length >= 8) { outColor = pallet[(int)pixel >> 5]; }
+            else if (pallet.Length >= 4) { outColor = pallet[(int)pixel >> 6]; }
+            else if (pallet.Length >= 2) { outColor = pallet[(int)pixel >> 7]; }
+            else { outColor = pallet[0]; }
+
+            return outColor;
         }
     }
 }

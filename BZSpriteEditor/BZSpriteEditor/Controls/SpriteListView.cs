@@ -12,13 +12,8 @@ namespace BZSpriteEditor.Controls
 {
     public partial class SpriteListView : ListView
     {
-        public class ListItemImageChangedEventArgs : EventArgs
-        {
-            public ListViewItem item;
-        }
-
+        public class ListItemImageChangedEventArgs : EventArgs { public ListViewItem item;}
         public delegate void ListItemImageChangedHandler(object sender, ListItemImageChangedEventArgs args);
-        //private ListItemImageChangedHandler listItemImageChangedHandler = null;
         public event ListItemImageChangedHandler ListItemImageChangedEvent;
         protected void OnListItemImageChangedEvent(ListViewItem item)
         {
@@ -26,12 +21,12 @@ namespace BZSpriteEditor.Controls
             ListItemImageChangedEvent(this, args);
         }
 
-        private SpriteData source;
+        private SpriteDataViewModel source;
 
         [Bindable(true)]
-        [TypeConverter(typeof(SpriteData))]
+        [TypeConverter(typeof(SpriteDataViewModel))]
         [Category("Data")]
-        public SpriteData DataSource
+        public SpriteDataViewModel DataSource
         {
             get
             {
@@ -44,25 +39,40 @@ namespace BZSpriteEditor.Controls
         }
 
         Bitmap EmptyImage;
+        Bitmap ErrorImage;
 
         public SpriteListView()
         {
             //InitializeComponent();
 
+            LargeImageList = new ImageList();
+            LargeImageList.ImageSize = new Size(64, 64);
+            LargeImageList.ColorDepth = ColorDepth.Depth32Bit;
+
             EmptyImage = new Bitmap(64, 64);
             {
                 Graphics g = Graphics.FromImage(EmptyImage);
 
-                //g.Clear(Color.Transparent);
                 g.Clear(Color.FromArgb(64, 64, 64, 64));
                 Pen dottedPen = new Pen(Color.FromArgb(128, 128, 128, 128), 2);
                 dottedPen.DashPattern = new float[] { 2, 2 };
-                //g.FillRectangle(new SolidBrush(Color.FromArgb(64, 64, 64, 64)), 2, 2, 60, 60);
                 g.DrawRectangle(dottedPen, 1, 1, 62, 62);
+            }
+
+            ErrorImage = new Bitmap(64, 64);
+            {
+                Graphics g = Graphics.FromImage(ErrorImage);
+
+                g.Clear(Color.FromArgb(64, 255, 0, 0));
+                Pen dottedPen = new Pen(Color.FromArgb(255, 128, 0, 0), 2);
+                Pen solidPen = new Pen(Color.FromArgb(255, 255, 0, 0), 6);
+                dottedPen.DashPattern = new float[] { 2, 2 };
+                g.DrawRectangle(dottedPen, 1, 1, 62, 62);
+                g.DrawLine(solidPen, 16, 16, 32 + 16, 32 + 16);
+                g.DrawLine(solidPen, 16, 32 + 16, 32 + 16, 16);
             }
         }
 
-        //private void bind()
         public void bind()
         {
             this.BeginUpdate();
@@ -72,31 +82,14 @@ namespace BZSpriteEditor.Controls
 
             Items.Clear();
             Groups.Clear();
-            if (LargeImageList != null && LargeImageList.Images != null) LargeImageList.Images.Clear();
+            ResetImageList();
 
             if (source != null)
             {
-                source.SpritesDeletedEvent += new SpriteData.SpritesDeletedHandler(source_SpritesDeletedEvent);
-                source.SpritesAddedEvent += new SpriteData.SpritesAddedHandler(source_SpritesAddedEvent);
-
-                if (LargeImageList != null && LargeImageList.Images != null)
-                {
-                    LargeImageList.Images.Add("nul", EmptyImage);
-                    source.Sprites.ForEach(dr =>
-                    {
-                        dr.NewImageGeneratedEvent += new Sprite.NewImageGeneratedHandler(OnNewImageGeneratedEvent);
-                        dr.UpdateGroupsEvent += new Sprite.UpdateGroupsHandler(OnUpdateGroupsEvent);
-
-                        Image icon = dr.RenderImage;
-                        if (icon != null)
-                        {
-                            LargeImageList.Images.Add(dr.GetImageName(), icon);
-                        }
-                    });
-                }
-
-                Groups.AddRange(source.GetGroups());
-                Items.AddRange(source.Sprites.Select(dr => dr.ListItem).ToArray());
+                source.RefreshEntireListEvent += new SpriteDataViewModel.RefreshEntireListHandler(source_RefreshEntireListEvent);
+                source.RefreshEntireImageListEvent += new SpriteDataViewModel.RefreshEntireImageListHandler(source_RefreshEntireImageListEvent);
+                source.NewListItemEvent += new SpriteDataViewModel.NewListItemHandler(source_NewListItemEvent);
+                source.ImageUpdatedEvent += new SpriteDataViewModel.ImageUpdatedHandler(source_ImageUpdatedEvent);
             }
 
             ShowGroups = tmpShowGroups;
@@ -104,75 +97,66 @@ namespace BZSpriteEditor.Controls
             this.EndUpdate();
         }
 
-        private void OnNewImageGeneratedEvent(object sender)
+        private void source_ImageUpdatedEvent(object sender, SpriteDataViewModel.ImageUpdatedEventArgs args)
         {
-            Sprite dr = (Sprite)sender;
+            if (args.oldKey != null) LargeImageList.Images.RemoveByKey(args.oldKey);
+            if (!LargeImageList.Images.ContainsKey(args.newKey)) LargeImageList.Images.Add(args.newKey, args.listImage);
 
-            Image icon = dr.RenderImage;
-            string name = dr.GetImageName();
-
-            if (icon != null && !LargeImageList.Images.ContainsKey(name))
-            {
-                LargeImageList.Images.Add(dr.GetImageName(), icon);
-            }
-
-            OnListItemImageChangedEvent(dr.ListItem);
+            OnListItemImageChangedEvent(args.listitem);
         }
 
-        private void OnUpdateGroupsEvent(object sender)
+        private void source_RefreshEntireListEvent(object sender)
+        {
+            ListViewItem[] items = source.GetListViewItems();
+
+            Form1.BackgroundQueueWorker.RunAsync(null, (obj, args) => { FullRefreshList(items); }, null);
+        }
+
+        private void FullRefreshList(ListViewItem[] items)
         {
             BeginUpdate();
 
-            bool tmpShowGroups = ShowGroups;
-            ShowGroups = true;
-
-            Sprite dr = (Sprite)sender;
-
-            Items.Remove(dr.ListItem);
-
-            dr.ListItem.Group = source.GetGroup(dr.Category);
-            if (!Groups.Contains(dr.ListItem.Group)) Groups.Add(dr.ListItem.Group);
-
-            Items.Add(dr.ListItem);
-
-            ShowGroups = tmpShowGroups;
+            Items.Clear();
+            Items.AddRange(items);
 
             EndUpdate();
         }
 
-        public void source_SpritesDeletedEvent(object sender, List<ListViewItem> listItemsToDelete)
+        private void ResetImageList()
         {
-            if (listItemsToDelete != null)
-            {
-                foreach (ListViewItem item in listItemsToDelete)
-                {
-                    Items.Remove(item);
-                }
-            }
+            LargeImageList.Images.Clear();
+            LargeImageList.Images.Add("nul", EmptyImage);
+            LargeImageList.Images.Add("err", ErrorImage);
         }
 
-        public void source_SpritesAddedEvent(object sender, List<ListViewItem> listItemsToAdd)
+        private void source_RefreshEntireImageListEvent(object sender)
         {
-            if (listItemsToAdd != null)
+            List<KeyValuePair<string,Image>> images = source.GetImageListItems();
+            ResetImageList();
+            images.ForEach(dr =>
             {
-                if (LargeImageList != null && LargeImageList.Images != null)
-                {
-                    LargeImageList.Images.Add("nul", EmptyImage);
-                    listItemsToAdd.Select(dr => (Sprite)(dr.Tag)).ToList().ForEach(dr =>
-                    {
-                        dr.NewImageGeneratedEvent += new Sprite.NewImageGeneratedHandler(OnNewImageGeneratedEvent);
-                        dr.UpdateGroupsEvent += new Sprite.UpdateGroupsHandler(OnUpdateGroupsEvent);
+                LargeImageList.Images.Add(dr.Key, dr.Value);
+            });
+        }
 
-                        Image icon = dr.RenderImage;
-                        if (icon != null)
-                        {
-                            LargeImageList.Images.Add(dr.GetImageName(), icon);
-                        }
-                    });
-                }
+        private void source_NewListItemEvent(object sender, SpriteDataViewModel.NewListItemEventArgs args)
+        {
+            List<ListViewItem> Sprites = args.NewSprites;
+            Form1.BackgroundQueueWorker.RunAsync(null, (obj, argsX) => { NewListItem(Sprites); }, null);
+        }
 
-                Items.AddRange(listItemsToAdd.ToArray());
-            }
+        private void NewListItem(List<ListViewItem> Sprites)
+        {
+            BeginUpdate();
+
+            Items.AddRange(Sprites.ToArray());
+
+            EndUpdate();
+        }
+
+        public Image GetFullImage(Sprite sprite)
+        {
+            return source.GetFullImage(sprite);
         }
     }
 }

@@ -9,25 +9,59 @@ using System.Windows.Forms;
 using System.IO;
 using BZSpriteEditor.Controls;
 using System.Threading;
+using System.Drawing.Imaging;
 
 namespace BZSpriteEditor
 {
     public partial class Form1 : Form
     {
-        SpriteData spriteData;
+        public static QueuedBackgroundWorker BackgroundQueueWorker = new QueuedBackgroundWorker();
+
+        SpriteDataViewModel spriteDataViewModel;
         List<Sprite> AnimationCells = new List<Sprite>();
         int animationIndex = 0;
         bool loadOperationIsImport = false;
+        bool PictureBoxWhite = false;
+
+        //QueuedBackgroundWorker BackgroundQueueWorker;
 
         public Form1()
         {
             InitializeComponent();
 
-            listView1.LargeImageList = new ImageList();
-            listView1.LargeImageList.ImageSize = new Size(64, 64);//new Size(256, 128);
-            listView1.LargeImageList.ColorDepth = ColorDepth.Depth32Bit;
+            //BackgroundQueueWorker = new QueuedBackgroundWorker();
+            spriteDataViewModel = new SpriteDataViewModel();
+            listView1.DataSource = spriteDataViewModel;
+            listView1.bind();
+
+            spriteDataViewModel.RefreshEntireListEvent += new SpriteDataViewModel.RefreshEntireListHandler(spriteData_RefreshEntireListEvent);
 
             listView1.ListItemImageChangedEvent += new SpriteListView.ListItemImageChangedHandler(listView1_ListItemImageChanged);
+        }
+
+        private void SetInterfaceStateBusy(bool FullReset)
+        {
+            menuStrip1.Enabled = false;
+            listView1.Enabled = false;
+            listBox1.Enabled = false;
+            propertyGrid1.Enabled = false;
+            pictureBox1.Enabled = false;
+            exportSpritesToolStripMenuItem.Enabled = false;
+
+            pictureBox1.Image = null;
+
+            animationTimer.Stop();
+
+            if (FullReset)
+            {
+                listView1.Clear();
+                listBox1.DataSource = null;
+            }
+
+            toolStripButtonUp.Enabled = false;
+            toolStripButtonDown.Enabled = false;
+
+            toolStripStatusLabel1.Text = "Busy";
         }
 
         private void openSTBToolStripMenuItem_Click(object sender, EventArgs e)
@@ -36,24 +70,26 @@ namespace BZSpriteEditor
             {
                 if (File.Exists(openFileDialog1.FileName))
                 {
-                    menuStrip1.Enabled = false;
-                    listView1.Enabled = false;
-                    listBox1.Enabled = false;
-                    propertyGrid1.Enabled = false;
-                    pictureBox1.Enabled = false;
-                    exportSpritesToolStripMenuItem.Enabled = false;
+                    SetInterfaceStateBusy(true);
 
-                    pictureBox1.Image = null;
+                    //backgroundWorker1.RunWorkerAsync();
+                    BackgroundQueueWorker.RunAsync(
+                        (obj, args) =>
+                        {
+                            BackgroundWorker wrkr = ((BackgroundWorker)obj);
 
-                    animationTimer.Stop();
-                    listView1.Clear();
-                    listBox1.DataSource = null;
-
-                    toolStripButtonUp.Enabled = false;
-                    toolStripButtonDown.Enabled = false;
-
-                    toolStripStatusLabel1.Text = "Busy";
-                    backgroundWorker1.RunWorkerAsync();
+                            spriteDataViewModel.OpenSpriteData(openFileDialog1.FileName);
+                        },
+                        (obj, args) =>
+                        {
+                            UpdateListView();
+                        },
+                        //(obj, args) =>
+                        //{
+                        //    
+                        //}
+                        null
+                    );
                 }
             }
         }
@@ -77,7 +113,7 @@ namespace BZSpriteEditor
             {
                 animationTimer.Stop();
                 propertyGrid1.SelectedObject = listView1.SelectedItems[0].Tag;
-                pictureBox1.Image = ((Sprite)(listView1.SelectedItems[0].Tag)).Image;
+                pictureBox1.Image = listView1.GetFullImage((Sprite)(listView1.SelectedItems[0].Tag));
                 //propertyGrid1.Enabled = true;
                 //moveBackToolStripMenuItem.Enabled = true;
                 //moveForwardToolStripMenuItem.Enabled = true;
@@ -99,7 +135,7 @@ namespace BZSpriteEditor
                     ListView.SelectedListViewItemCollection items = listView1.SelectedItems;
                     foreach(ListViewItem item in items)
                     {
-                        AnimationCells.Add(((Sprite)(item.Tag)));
+                        AnimationCells.Add((Sprite)(item.Tag));
                     }
                     animationIndex = 0;
                     animationTimer.Start();
@@ -120,7 +156,7 @@ namespace BZSpriteEditor
             {
                 if (listView1.SelectedItems[0] == args.item)
                 {
-                    pictureBox1.Image = ((Sprite)(listView1.SelectedItems[0].Tag)).Image;
+                    pictureBox1.Image = listView1.GetFullImage((Sprite)(listView1.SelectedItems[0].Tag));
                 }
             }
         }
@@ -151,7 +187,7 @@ namespace BZSpriteEditor
                 animationIndex = 0;
             if (AnimationCells.Count > 0)
             {
-                pictureBox1.Image = AnimationCells[animationIndex].Image;
+                pictureBox1.Image = listView1.GetFullImage(AnimationCells[animationIndex]);
                 animationIndex++;
             }
         }
@@ -160,9 +196,9 @@ namespace BZSpriteEditor
         {
             string filename = openFileDialog1.FileName;
 
-            SpriteData spriteDataLocal = null;
+            SpriteDataViewModel spriteDataLocal = null;
 
-            using (FileStream steam = File.Open(filename, FileMode.Open))
+            /*using (FileStream steam = File.Open(filename, FileMode.Open))
             {
                 if (steam != null)
                 {
@@ -185,7 +221,7 @@ namespace BZSpriteEditor
 
                     if (!loadOperationIsImport || spriteData == null)
                     {
-                        spriteDataLocal = new SpriteData();
+                        spriteDataLocal = new SpriteDataViewModel();
                     }
                     else
                     {
@@ -194,24 +230,23 @@ namespace BZSpriteEditor
                     spriteDataLocal.ReadFile(steam, Groups);
                     if (!loadOperationIsImport)
                     {
-                        spriteDataLocal.SpritesDeletedEvent += new SpriteData.SpritesDeletedHandler(spriteDataLocal_SpritesDeletedEvent);
-                        spriteDataLocal.SpritesAddedEvent += new SpriteData.SpritesAddedHandler(spriteData_SpritesAddedEvent);
+                        spriteDataLocal.SpritesDeletedEvent += new SpriteDataViewModel.SpritesDeletedHandler(spriteDataLocal_SpritesDeletedEvent);
+                        spriteDataLocal.SpritesAddedEvent += new SpriteDataViewModel.SpritesAddedHandler(spriteData_SpritesAddedEvent);
                     }
                     loadOperationIsImport = false;
                 }
-            }
+            }*/
 
-            spriteData = spriteDataLocal;
+            spriteDataViewModel = spriteDataLocal;
         }
 
         private void UpdateListView()
         {
             listBox1.SelectedIndex = -1;
-            listBox1.DataSource = null;
-            listView1.DataSource = spriteData;
-            listBox1.DataSource = spriteData.Sprites;
-            listView1.bind();
-            //listBox1.bind();
+//            listBox1.DataSource = null;
+//            listView1.DataSource = spriteData;
+//            listBox1.DataSource = spriteData.Sprites;
+//            listView1.bind();
 
             toolStripStatusLabel1.Text = "Ready";
 
@@ -245,11 +280,11 @@ namespace BZSpriteEditor
 
             listBox1.DataSource = null;
 
-            Sprite tmp = spriteData.Sprites[newIDX];
+            /*Sprite tmp = spriteData.Sprites[newIDX];
             spriteData.Sprites[newIDX] = spriteData.Sprites[newIDX - 1];
             spriteData.Sprites[newIDX - 1] = tmp;
             
-            listBox1.DataSource = spriteData.Sprites;
+            listBox1.DataSource = spriteData.Sprites;*/
 
             listBox1.SelectedIndex = newIDX - 1;
         }
@@ -260,11 +295,11 @@ namespace BZSpriteEditor
 
             listBox1.DataSource = null;
 
-            Sprite tmp = spriteData.Sprites[newIDX];
+            /*Sprite tmp = spriteData.Sprites[newIDX];
             spriteData.Sprites[newIDX] = spriteData.Sprites[newIDX + 1];
             spriteData.Sprites[newIDX + 1] = tmp;
 
-            listBox1.DataSource = spriteData.Sprites;
+            listBox1.DataSource = spriteData.Sprites;*/
 
             listBox1.SelectedIndex = newIDX + 1;
         }
@@ -292,69 +327,72 @@ namespace BZSpriteEditor
 
         private void saveSTBToolStripMenuItem1_Click(object sender, EventArgs e)
         {
-            if (spriteData != null)
+            if (spriteDataViewModel != null)
             {
                 if (saveFileDialog1.ShowDialog() == DialogResult.OK)
                 {
                     string filename = saveFileDialog1.FileName;
-                    string filenameMeta = Path.ChangeExtension(filename, "meta");
 
-                    using (FileStream stream = File.Open(filename, FileMode.OpenOrCreate))
-                    using (FileStream streamMeta = File.Open(filenameMeta, FileMode.OpenOrCreate))
-                    {
-                        if (stream != null && streamMeta != null)
+                    SetInterfaceStateBusy(false);
+
+                    //backgroundWorker1.RunWorkerAsync();
+                    BackgroundQueueWorker.RunAsync(
+                        (obj, args) =>
                         {
-                            spriteData.WriteFile(stream);
-                            spriteData.Sprites.ForEach(dr =>
-                            {
-                                if (dr.Category != null && dr.Category.Length > 0)
-                                {
-                                    string lineToWrite = dr.Name + "\t" + dr.Texture + "\t" + dr.Category + "\r\n";
-                                    byte[] bytes = lineToWrite.ToCharArray().Select(dx => (byte)dx).ToArray();
-                                    streamMeta.Write(bytes, 0, bytes.Length);
-                                }
-                            });
-                        }
-                    }
+                            BackgroundWorker wrkr = ((BackgroundWorker)obj);
+
+                            spriteDataViewModel.SaveSpriteData(filename);
+                        },
+                        (obj, args) =>
+                        {
+                            UpdateListView();
+                        },
+                        //(obj, args) =>
+                        //{
+                        //    
+                        //}
+                        null
+                    );
                 }
             }
         }
 
         private void newSpriteToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (spriteData == null)
+            /*if (spriteData == null)
             {
-                spriteData = new SpriteData();
-                spriteData.SpritesDeletedEvent += new SpriteData.SpritesDeletedHandler(spriteDataLocal_SpritesDeletedEvent);
-                spriteData.SpritesAddedEvent += new SpriteData.SpritesAddedHandler(spriteData_SpritesAddedEvent);
+                spriteData = new SpriteDataViewModel();
+                spriteData.SpritesDeletedEvent += new SpriteDataViewModel.SpritesDeletedHandler(spriteDataLocal_SpritesDeletedEvent);
+                spriteData.SpritesAddedEvent += new SpriteDataViewModel.SpritesAddedHandler(spriteData_SpritesAddedEvent);
 
                 UpdateListView();
             }
-            spriteData.AddNewSprite();
+            spriteData.AddNewSprite();*/
+            spriteDataViewModel.AddNewSprite();
         }
 
         private void deleteSpriteToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            List<Sprite> sprites = new List<Sprite>();
+            /*List<Sprite> sprites = new List<Sprite>();
             foreach (ListViewItem item in listView1.SelectedItems)
             {
                 sprites.Add((Sprite)item.Tag);
             }
 
-            spriteData.RemoveItems(sprites);
+            spriteData.RemoveItems(sprites);*/
         }
 
         public void spriteDataLocal_SpritesDeletedEvent(object sender, List<ListViewItem> listItemsToDelete)
         {
             listBox1.DataSource = null;
-            listBox1.DataSource = spriteData.Sprites;
+            //listBox1.DataSource = spriteData.Sprites;
             listBox1.SelectedIndex = -1;
         }
 
         public void spriteData_SpritesAddedEvent(object sender, List<ListViewItem> listItemsToAdd)
         {
             listBox1.DataSource = null;
-            listBox1.DataSource = spriteData.Sprites;
+            //listBox1.DataSource = spriteData.Sprites;
             listBox1.SelectedIndex = -1;
         }
 
@@ -364,33 +402,33 @@ namespace BZSpriteEditor
             {
                 if (File.Exists(openFileDialog1.FileName))
                 {
-                    menuStrip1.Enabled = false;
-                    listView1.Enabled = false;
-                    listBox1.Enabled = false;
-                    propertyGrid1.Enabled = false;
-                    pictureBox1.Enabled = false;
-                    exportSpritesToolStripMenuItem.Enabled = false;
+                    SetInterfaceStateBusy(false);
 
-                    pictureBox1.Image = null;
+                    //backgroundWorker1.RunWorkerAsync();
+                    BackgroundQueueWorker.RunAsync(
+                        (obj, args) =>
+                        {
+                            BackgroundWorker wrkr = ((BackgroundWorker)obj);
 
-                    animationTimer.Stop();
-                    listView1.Clear();
-                    listBox1.DataSource = null;
-
-                    toolStripButtonUp.Enabled = false;
-                    toolStripButtonDown.Enabled = false;
-
-                    toolStripStatusLabel1.Text = "Busy";
-
-                    loadOperationIsImport = true;
-                    backgroundWorker1.RunWorkerAsync();
+                            spriteDataViewModel.ImportSpriteData(openFileDialog1.FileName);
+                        },
+                        (obj, args) =>
+                        {
+                            UpdateListView();
+                        },
+                        //(obj, args) =>
+                        //{
+                        //    
+                        //}
+                        null
+                    );
                 }
             }
         }
 
         private void exportSpritesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (spriteData != null && listView1.SelectedItems.Count > 0)
+            if (spriteDataViewModel != null && listView1.SelectedItems.Count > 0)
             {
                 List<Sprite> Sprites = new List<Sprite>();
                 foreach(ListViewItem item in listView1.SelectedItems)
@@ -401,7 +439,7 @@ namespace BZSpriteEditor
                 if (saveFileDialog1.ShowDialog() == DialogResult.OK)
                 {
                     string filename = saveFileDialog1.FileName;
-                    string filenameMeta = Path.ChangeExtension(filename, "meta");
+                    /*string filenameMeta = Path.ChangeExtension(filename, "meta");
 
                     using (FileStream stream = File.Open(filename, FileMode.OpenOrCreate))
                     using (FileStream streamMeta = File.Open(filenameMeta, FileMode.OpenOrCreate))
@@ -419,9 +457,27 @@ namespace BZSpriteEditor
                                 }
                             });
                         }
-                    }
+                    }*/
                 }
             }
+        }
+
+        public void spriteData_RefreshEntireListEvent(object sender)
+        {
+            
+        }
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+            if (PictureBoxWhite)
+            {
+                pictureBox1.BackgroundImage = Properties.Resources.bg;
+            }
+            else
+            {
+                pictureBox1.BackgroundImage = Properties.Resources.bg2;
+            }
+            PictureBoxWhite = !PictureBoxWhite;
         }
     }
 }

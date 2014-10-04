@@ -45,23 +45,94 @@ namespace BZSpriteEditor
         public ushort height; // Height of the sprite rectangle in pixels/texels
         public uint flags; // Extra data associated with the sprite (lowest 4 bits are colorization)
 
+        // TODO thinking about killing this event
         public delegate void NewImageGeneratedHandler(object sender);
-        //private NewImageGeneratedHandler newImageGeneratedHandler = null;
         public event NewImageGeneratedHandler NewImageGeneratedEvent;
         protected void OnNewImageGeneratedEvent()
         {
-            NewImageGeneratedEvent(this);
+            NewImageGeneratedHandler evt = NewImageGeneratedEvent;
+            if (evt != null)
+            {
+                evt(this);
+            }
         }
 
-        public delegate void UpdateGroupsHandler(object sender);
-        //private UpdateGroupsHandler updateGroupsHandler = null;
-        public event UpdateGroupsHandler UpdateGroupsEvent;
-        protected void OnUpdateGroupsEvent()
+        public delegate void ColorFlagChangedHandler(object sender, Colorization oldColor, Colorization newColor);
+        public event ColorFlagChangedHandler ColorFlagChangedEvent;
+        protected void OnColorFlagChangedEvent(Colorization oldColor, Colorization newColor)
         {
-            UpdateGroupsEvent(this);
+            ColorFlagChangedHandler evt = ColorFlagChangedEvent;
+            if (evt != null)
+            {
+                evt(this, oldColor, newColor);
+            }
         }
 
-        private static Dictionary<string, MapFile> ImageMemo;
+        public delegate void TextureChangedHandler(object sender, string oldTexture, string newTexture);
+        public event TextureChangedHandler TextureChangedEvent;
+        protected void OnTextureChangedEvent(string oldTexture, string newTexture)
+        {
+            TextureChangedHandler evt = TextureChangedEvent;
+            if (evt != null)
+            {
+                evt(this, oldTexture, newTexture);
+            }
+        }
+
+        public delegate void OffsetXChangedHandler(object sender, ushort oldOffsetX, ushort newOffsetX);
+        public event OffsetXChangedHandler OffsetXChangedEvent;
+        protected void OnOffsetXChangedEvent(ushort oldOffsetX, ushort newOffsetX)
+        {
+            OffsetXChangedHandler evt = OffsetXChangedEvent;
+            if (evt != null)
+            {
+                evt(this, oldOffsetX, newOffsetX);
+            }
+        }
+
+        public delegate void OffsetYChangedHandler(object sender, ushort oldOffsetY, ushort newOffsetY);
+        public event OffsetYChangedHandler OffsetYChangedEvent;
+        protected void OnOffsetYChangedEvent(ushort oldOffsetY, ushort newOffsetY)
+        {
+            OffsetYChangedHandler evt = OffsetYChangedEvent;
+            if (evt != null)
+            {
+                evt(this, oldOffsetY, newOffsetY);
+            }
+        }
+
+        public delegate void WidthChangedHandler(object sender, ushort oldWidth, ushort newWidth);
+        public event WidthChangedHandler WidthChangedEvent;
+        protected void OnWidthChangedEvent(ushort oldWidth, ushort newWidth)
+        {
+            WidthChangedHandler evt = WidthChangedEvent;
+            if (evt != null)
+            {
+                evt(this, oldWidth, newWidth);
+            }
+        }
+
+        public delegate void HeightChangedHandler(object sender, ushort oldHeight, ushort newHeight);
+        public event HeightChangedHandler HeightChangedEvent;
+        protected void OnHeightChangedEvent(ushort oldHeight, ushort newHeight)
+        {
+            HeightChangedHandler evt = HeightChangedEvent;
+            if (evt != null)
+            {
+                evt(this, oldHeight, newHeight);
+            }
+        }
+
+        public delegate void UpdateNameHandler(object sender);
+        public event UpdateNameHandler UpdateNameEvent;
+        protected void OnUpdateNameEvent()
+        {
+            UpdateNameHandler evt = UpdateNameEvent;
+            if (evt != null)
+            {
+                evt(this);
+            }
+        }
 
         public override string ToString()
         {
@@ -74,39 +145,16 @@ namespace BZSpriteEditor
                 string.Format("0x{0:x8}", flags);
         }
 
-        public static void EnableMemo()
-        {
-            if (ImageMemo == null) ImageMemo = new Dictionary<string, MapFile>();
-        }
-
-        public static void ClearImageMemo()
-        {
-            if (ImageMemo != null)
-            {
-                //ImageMemo.Values.AsEnumerable().ToList().ForEach(dr =>
-                //{
-                //    dr.Dispose();
-                //});
-
-                ImageMemo.Clear();
-            }
-        }
-
-        public static void DisableMemo()
-        {
-            ClearImageMemo();
-
-            ImageMemo = null;
-        }
-
         [Category("Render")]
         [Description("Hardware rendering texture module color")]
         [DisplayName("Color")]
         public Colorization ColorFlag {
             get { return (Colorization)(flags & 0xf); }
             set {
+                Colorization oldVal = ColorFlag;
                 flags = (flags & 0xfff0) | ((uint)value & 0xf);
-                UpdateImageFromSettings();
+                OnColorFlagChangedEvent(oldVal, ColorFlag);
+                //UpdateImageFromSettings();
             }
         }
 
@@ -116,7 +164,8 @@ namespace BZSpriteEditor
             get { return new string(name.TakeWhile(dr => dr != '\0').ToArray()).Trim(); }
             set {
                 value.Trim().PadRight(32, '\0').Substring(0, 32).ToCharArray().CopyTo(name,0);
-                listItem.Text = Name;
+                //listItem.Text = Name;
+                OnUpdateNameEvent();
             }
         }
 
@@ -125,27 +174,29 @@ namespace BZSpriteEditor
         public string Texture {
             get { return new string(texture.TakeWhile(dr => dr != '\0').ToArray()).Trim(); }
             set {
+                string oldVal = Texture;
                 value.Trim().PadRight(8, '\0').Substring(0, 8).ToCharArray().CopyTo(texture, 0);
-                UpdateImageFromSettings();
+                OnTextureChangedEvent(oldVal, Texture);
+                //UpdateImageFromSettings();
             }
         }
 
         [Category("Clipping")]
         [Description("X coordinate on the image that the sprite selection starts")]
         [DisplayName("X")]
-        public ushort OffsetX { get { return u; } set { u = value; UpdateImageFromSettings(); } }
+        public ushort OffsetX { get { return u; } set { ushort oldVal = OffsetX; u = value; OnOffsetXChangedEvent(oldVal, OffsetX); } }
         [Category("Clipping")]
         [Description("Y coordinate on the image that the sprite selection starts")]
         [DisplayName("Y")]
-        public ushort OffsetY { get { return v; } set { v = value; UpdateImageFromSettings(); } }
+        public ushort OffsetY { get { return v; } set { ushort oldVal = OffsetY; v = value; OnOffsetYChangedEvent(oldVal, OffsetY); } }
         [Category("Clipping")]
         [Description("Width of the sprite")]
-        public ushort Width { get { return width; } set { width = value; UpdateImageFromSettings(); } }
+        public ushort Width { get { return width; } set { ushort oldVal = Width; width = value; OnWidthChangedEvent(oldVal, Width); } }
         [Category("Clipping")]
         [Description("Height of the sprite")]
-        public ushort Height { get { return height; } set { height = value; UpdateImageFromSettings(); } }
+        public ushort Height { get { return height; } set { ushort oldVal = Height; height = value; OnHeightChangedEvent(oldVal, Height); } }
 
-        private ListViewItem listItem;
+        /*private ListViewItem listItem;
         [Browsable(false)]
         [ReadOnly(true)]
         public ListViewItem ListItem { get { return listItem; } }
@@ -158,9 +209,9 @@ namespace BZSpriteEditor
         [ReadOnly(true)]
         public Image Image { get; private set; }
 
-        private string category;
+        private string category;*/
 
-        [Category("Extra")]
+        /*[Category("Extra")]
         [Description("Category for easy human use")]
         public string Category {
             get { return category; }
@@ -169,9 +220,9 @@ namespace BZSpriteEditor
                 category = value;
                 OnUpdateGroupsEvent();
             }
-        }
+        }*/
 
-        public Sprite(char[] name, char[] texture, ushort u, ushort v, ushort width, ushort height, uint flags, SpriteData dataModel, string category)
+        public Sprite(char[] name, char[] texture, ushort u, ushort v, ushort width, ushort height, uint flags, SpriteTableBinary dataModel)//, string category)
         {
             this.name = new char[32];
             name.Take(32).ToArray().CopyTo(this.name, 0);
@@ -185,13 +236,13 @@ namespace BZSpriteEditor
             this.height = height;
             this.flags = flags;
 
-            this.category = category;
+            //this.category = category;
 
-            SetImage();
-            listItem = new ListViewItem(Name, GetImageName());
-            listItem.Tag = this;
+            //SetImage();
+            //listItem = new ListViewItem(Name, GetImageName());
+            //listItem.Tag = this;
 
-            listItem.Group = dataModel.GetGroup(category);
+            ////listItem.Group = dataModel.GetGroup(category);
         }
 
         public Sprite()
@@ -208,31 +259,31 @@ namespace BZSpriteEditor
             this.height = 0;
             this.flags = 0;
 
-            this.category = string.Empty;
+            //this.category = string.Empty;
 
-            SetImage();
-            listItem = new ListViewItem(Name, GetImageName());
-            listItem.Tag = this;
+            //SetImage();
+            //listItem = new ListViewItem(Name, GetImageName());
+            //listItem.Tag = this;
 
-            //listItem.Group = dataModel.GetGroup(category);
+            ////listItem.Group = dataModel.GetGroup(category);
         }
 
         private void UpdateImageFromSettings()
         {
-            SetImage();
-            listItem.ImageKey = GetImageName();
+            //SetImage();
+            //listItem.ImageKey = GetImageName();
 
             OnNewImageGeneratedEvent();
         }
 
         ~Sprite()
         {
-            if (Image != null) Image.Dispose();
-            if (RenderImage != null) RenderImage.Dispose();
+            //if (Image != null) Image.Dispose();
+            //if (RenderImage != null) RenderImage.Dispose();
         }
 
-        //olor COLOR_White = Color.FromArgb(255, 255, 255, 255);
-        Color COLOR_Tan = Color.FromArgb(255, 238, 204, 170);
+        //Color COLOR_White = Color.FromArgb(255, 255, 255, 255);
+        /*Color COLOR_Tan = Color.FromArgb(255, 238, 204, 170);
         Color COLOR_Brown = Color.FromArgb(255, 68, 51, 34);
         Color COLOR_Black = Color.FromArgb(255, 0, 0, 0);
         Color COLOR_Green = Color.FromArgb(255, 0, 255, 0);
@@ -240,23 +291,23 @@ namespace BZSpriteEditor
         Color COLOR_Red = Color.FromArgb(255, 255, 0, 0);
         Color COLOR_Blue = Color.FromArgb(255, 0, 127, 255);
         Color COLOR_Cyan = Color.FromArgb(255, 0, 255, 255);
-        Color COLOR_Grey = Color.FromArgb(255, 153, 153, 153);
-        private static Color mulColor(Color A, Color B)
+        Color COLOR_Grey = Color.FromArgb(255, 153, 153, 153);*/
+        /*private static Color mulColor(Color A, Color B)
         {
             return Color.FromArgb(
                 (byte)(A.A * B.A / 255.0),
                 (byte)(A.R * B.R / 255.0),
                 (byte)(A.G * B.G / 255.0),
                 (byte)(A.B * B.B / 255.0));
-        }
+        }*/
 
-        public string GetImageName()
+        /*public string GetImageName()
         {
             if (RenderImage == null) return "nul";
             return Texture + ":" + u + ":" + v + ":" + width + ":" + height + ":" + flags;
-        }
+        }*/
 
-        private void SetImage()
+        /*private void SetImage()
         {
             if (width > 0 && height > 0)
             {
@@ -341,7 +392,7 @@ namespace BZSpriteEditor
                 RenderImage = blankBMP; return;
             }
             RenderImage = null; return;
-        }
+        }*/
 
         public byte[] GetBytes()
         {
@@ -359,10 +410,10 @@ namespace BZSpriteEditor
         }
     }
 
-    public class SpriteData
+    public class SpriteTableBinary
     {
-        private Dictionary<string, ListViewGroup> GroupMap;
-        public ListViewGroup GetGroup(string name)
+        //private Dictionary<string, ListViewGroup> GroupMap;
+        /*public ListViewGroup GetGroup(string name)
         {
             if (name == null || name.Length == 0) return null;//name = "[Default]";
 
@@ -372,12 +423,12 @@ namespace BZSpriteEditor
             }
 
             return GroupMap[name];
-        }
+        }*/
 
-        public void RemoveItems(List<Sprite> sprites)
+        public List<Sprite> RemoveItems(List<Sprite> sprites)
         {
             List<Sprite> spritesToDelete = Sprites.Where(dr => sprites.Contains(dr)).ToList();
-            List<ListViewItem> listItemsToDelete = spritesToDelete.Select(dr => dr.ListItem).ToList();
+            //List<ListViewItem> listItemsToDelete = spritesToDelete.Select(dr => dr.ListItem).ToList();
 
             // remove sprites from our internal list now that we are holding references above
             spritesToDelete.ForEach(dr =>
@@ -385,39 +436,26 @@ namespace BZSpriteEditor
                 Sprites.Remove(dr);
             });
 
-            // throw out events here that list these removals, though we might not need these depending on how we do it
-            OnSpritesDeletedEvent(listItemsToDelete);
+            return spritesToDelete;
         }
 
-        public void AddNewSprite()
+        public void AddNewSprite(Sprite newSprite)
         {
-            List<ListViewItem> newsprites = new List<ListViewItem>();
-            Sprite newSprite = new Sprite();
-            newsprites.Add(newSprite.ListItem);
             Sprites.Add(newSprite);
-
-            OnSpritesAddedEvent(newsprites);
         }
 
-        public delegate void SpritesDeletedHandler(object sender, List<ListViewItem> listItemsToDelete);
-        public event SpritesDeletedHandler SpritesDeletedEvent;
-        protected void OnSpritesDeletedEvent(List<ListViewItem> listItemsToDelete)
+        public Sprite AddNewSprite()
         {
-            SpritesDeletedEvent(this, listItemsToDelete);
-        }
-
-        public delegate void SpritesAddedHandler(object sender, List<ListViewItem> listItemsToAdd);
-        public event SpritesAddedHandler SpritesAddedEvent;
-        protected void OnSpritesAddedEvent(List<ListViewItem> listItemsToAdd)
-        {
-            SpritesAddedEvent(this, listItemsToAdd);
+            Sprite newSprite = new Sprite();
+            Sprites.Add(newSprite);
+            return newSprite;
         }
 
 
-        public ListViewGroup[] GetGroups()
+        /*public ListViewGroup[] GetGroups()
         {
             return GroupMap.Values.ToArray();
-        }
+        }*/
 
         public List<Sprite> Sprites { get; private set; }
         //private ImageList images;
@@ -427,17 +465,26 @@ namespace BZSpriteEditor
         private static int WIDTH_OFFSET  = 32 + 8 + 2 + 2;
         private static int HEIGHT_OFFSET = 32 + 8 + 2 + 2 + 2;
         private static int FLAGS_OFFSET  = 32 + 8 + 2 + 2 + 2 + 2;
+        private string p;
 
-        public SpriteData()
+        public SpriteTableBinary()
         {
             Sprites = new List<Sprite>();
-            //images = new ImageList();
-            GroupMap = new Dictionary<string, ListViewGroup>();
+            //GroupMap = new Dictionary<string, ListViewGroup>();
+        }
+
+        public SpriteTableBinary(string filename)
+        {
+            Sprites = new List<Sprite>();
+            using (FileStream file = File.Open(filename, FileMode.Open))
+            {
+                ReadFile(file);
+            }
         }
 
         public void ReadFile(Stream filestream, Dictionary<string, string> Groups = null)
         {
-            Sprite.EnableMemo();
+            //Sprite.EnableMemo();
 
             byte[] readBytes = new byte[32 + 8 + 2 + 2 + 2 + 2 + 4];
             while (filestream.Read(readBytes, 0, readBytes.Length) > 0)
@@ -454,13 +501,21 @@ namespace BZSpriteEditor
                 string tmpTexture = new string(texture.TakeWhile(dr => dr != '\0').ToArray()).Trim();
                 string cat = (Groups != null && Groups.ContainsKey(tmpName + "\t" + tmpTexture)) ? Groups[tmpName + "\t" + tmpTexture] : null;
 
-                Sprite spr = new Sprite(name, texture, u, v, width, height, flags, this, cat);
+                Sprite spr = new Sprite(name, texture, u, v, width, height, flags, this);//, cat);
                 Sprites.Add(spr);
 
                 //images.Images.Add(spr.GetImageKey());
             }
 
-            Sprite.DisableMemo();
+            //Sprite.DisableMemo();
+        }
+
+        public void WriteFile(string filename)
+        {
+            using (FileStream stream = File.Open(filename, FileMode.OpenOrCreate))
+            {
+                WriteFile(stream);
+            }
         }
 
         public void WriteFile(FileStream stream)
